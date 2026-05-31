@@ -11,6 +11,10 @@ import time
 
 app = Flask(__name__)
 CORS(app)
+
+CACHE_TTL = 72000
+cache_dict = {}
+device_id = ""
 SALTS = [
     {"alg":"md5","salt":"fyZ4+p77W1U4zcWBUwefAIFhFxvADWtT1wzolCxhg9q7etmGUjXr"},
     {"alg":"md5","salt":"uSUX02HYJ1IkyLdhINEFcCf7l2"},
@@ -56,7 +60,7 @@ def captcha_sign(device_id: str, timestamp: str) ->str:
     g = "YUMx5nI8ZU8Ap8pm" + "undefined" + "drive.mypikpak.com" + device_id + timestamp
     return f"1.{calculate_captcha_sign(SALTS, g)}"
 
-def init(device_id: str):
+def init():
     url = "https://user.mypikpak.com/v1/shield/captcha/init"
     
     timestamp = get_timestamp()
@@ -106,7 +110,7 @@ def init(device_id: str):
     return captcha_token
 
 
-def share(share_id: str, pass_code: str, captcha_token: str, device_id: str):
+def share(share_id: str, pass_code: str, captcha_token: str):
     url = "https://api-drive.mypikpak.com/drive/v1/share"
     params= {
         "limit": 100,
@@ -145,7 +149,7 @@ def share(share_id: str, pass_code: str, captcha_token: str, device_id: str):
         "pass_code_token": pass_code_token
     }
 
-def file_info(share_id: str, file_id: str, pass_code_token: str, captcha_token: str, device_id: str):
+def file_info(share_id: str, file_id: str, pass_code_token: str, captcha_token: str):
     url = "https://api-drive.mypikpak.com/drive/v1/share/file_info"
     params= {
         "share_id": share_id,
@@ -187,10 +191,19 @@ def get_stream():
     # 示例模拟真实链接，实际在此处写爬虫/接口请求、解密、鉴权逻辑
     if not share_id or not pass_code:
         return "参数缺失", 400
-    device_id = device_id_generator()
-    captcha_token = init(device_id)
+    if not device_id:
+        device_id = device_id_generator()
 
-    file = share(share_id, pass_code, captcha_token, device_id)
+    now = time.time()
+    # 命中有效缓存，直接返回
+    if share_id in cache_dict:
+        cache_time, link = cache_dict[share_id]
+        if now - cache_time < CACHE_TTL:
+            return link
+    captcha_token = init()
 
-    real_url = file_info(share_id, file['file_id'], file['pass_code_token'], captcha_token, device_id)
+    file = share(share_id, pass_code, captcha_token)
+
+    real_url = file_info(share_id, file['file_id'], file['pass_code_token'], captcha_token)
+    cache_dict[share_id] = (now, real_url)
     return real_url
