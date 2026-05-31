@@ -183,10 +183,11 @@ def file_info(share_id: str, file_id: str, pass_code_token: str, captcha_token: 
 # 示例：GET 接口，可自定义鉴权、参数、解析逻辑
 @app.route('/get_stream', methods=['GET'])
 def get_stream():
+    global device_id
     # 1. 接收URL参数（示例：id、token 做鉴权/区分资源）
     share_id = request.args.get('share_id', '')
     pass_code = request.args.get('pass_code', '')
-
+    
     # ========== 这里替换成你的逻辑：鉴权 + 获取真实流地址 ==========
     # 示例模拟真实链接，实际在此处写爬虫/接口请求、解密、鉴权逻辑
     if not share_id or not pass_code:
